@@ -1,3 +1,32 @@
+//---------------------------------------------------------------------------------
+// ddr3_test.v
+//
+// This function transfers data from the input buffer to the Memory Interface
+// Generator (MIG). Additionally, it can retrieve data from the MIG and store it
+// in the output buffer.
+//
+//---------------------------------------------------------------------------------
+// Copyright (c) 2023 Opal Kelly Incorporated
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//---------------------------------------------------------------------------------
+
 
 `timescale 1ns/1ps
 `default_nettype none
@@ -40,13 +69,13 @@ module MIG_inter
 
 localparam FIFO_SIZE           = 128;
 localparam BURST_UI_WORD_COUNT = 2'd1;
-localparam ADDRESS_INCREMENT   = 5'd8; //naslove poveèujemo za 8
+localparam ADDRESS_INCREMENT   = 5'd8; //naslove poveÃ¨ujemo za 8
 
 //naslovi za branje in pisanje 
 reg  [29:0] cmd_byte_addr_wr;
 reg  [29:0] cmd_byte_addr_rd;
 
-//signal za štetje podatkov v burstu
+//signal za Å¡tetje podatkov v burstu
 reg  [1:0]  burst_count;
 
 //signali za branje/pisanje
@@ -97,11 +126,11 @@ always @(posedge clk) begin
 		case (state)
 			s_idle: begin
 				burst_count <= BURST_UI_WORD_COUNT-1;
-				// cikel vpisovanja v SRAM se lahko zaène le èe je inicializacija SRAMa konèana in je dovolj podatkov v vhodnem FIFO
+				// cikel vpisovanja v SRAM se lahko zaÃ¨ne le Ã¨e je inicializacija SRAMa konÃ¨ana in je dovolj podatkov v vhodnem FIFO
 				if (calib_done==1 && write_mode==1 && (ib_count >= BURST_UI_WORD_COUNT)) begin
 					app_addr <= cmd_byte_addr_wr;
 					state <= s_write_0;
-					// cikel branja  iz SRAM se lahko zaène le èe je inicializacija SRAMa konèana in je dovolj prostora v izhodnem FIFO
+					// cikel branja  iz SRAM se lahko zaÃ¨ne le Ã¨e je inicializacija SRAMa konÃ¨ana in je dovolj prostora v izhodnem FIFO
 				end else if (calib_done==1 && read_mode==1 && (ob_count<(FIFO_SIZE-2-BURST_UI_WORD_COUNT) ) ) begin
 					app_addr <= cmd_byte_addr_rd;
 					state <= s_read_0;
@@ -114,25 +143,25 @@ always @(posedge clk) begin
 			end
 
 			s_write_1: begin
-				if(ib_valid==1) begin           //èe je prebran podatek veljaven
+				if(ib_valid==1) begin           //Ã¨e je prebran podatek veljaven
 					app_wdf_data <= ib_data;   //nastavi vrednost za vpis v DDR
 					state <= s_write_2;
 				end
 			end
 
 			s_write_2: begin
-				if (app_wdf_rdy == 1'b1) begin  //èe je SRAM pripravljen za prejem podatkov
+				if (app_wdf_rdy == 1'b1) begin  //Ã¨e je SRAM pripravljen za prejem podatkov
 					state <= s_write_3;
 				end
 			end
 
 			s_write_3: begin
-				app_wdf_wren <= 1'b1;           //omogoèimo pisanje v SRAM - write enable
+				app_wdf_wren <= 1'b1;           //omogoÃ¨imo pisanje v SRAM - write enable
 				if (burst_count == 3'd0) begin
 					app_wdf_end <= 1'b1;       // trenutni cikel ure je zadnji cikel vhodnih podatkov na app_wdf_data
 				end
 				if ( (app_wdf_rdy == 1'b1) & (burst_count == 3'd0) ) begin
-					app_en    <= 1'b1;         //app enable omgoèi delovanje vmesnika
+					app_en    <= 1'b1;         //app enable omgoÃ¨i delovanje vmesnika
 					app_cmd <= 3'b000;         //izbremeo operacijo pisanja 
 					state <= s_write_4;
 				end else if (app_wdf_rdy == 1'b1) begin 
@@ -143,39 +172,39 @@ always @(posedge clk) begin
 
 			s_write_4: begin
 				if (app_rdy == 1'b1) begin           //MIG lahko sprejme ukaze
-					cmd_byte_addr_wr <= cmd_byte_addr_wr + ADDRESS_INCREMENT;  //poveèamo naslov
+					cmd_byte_addr_wr <= cmd_byte_addr_wr + ADDRESS_INCREMENT;  //poveÃ¨amo naslov
 					state <= s_idle;
 				end else begin
-					app_en    <= 1'b1;             //app enable omgoèi delovanje interfacea SRAM
+					app_en    <= 1'b1;             //app enable omgoÃ¨i delovanje interfacea SRAM
 					app_cmd <= 3'b000;             //izbremeo operacijo pisanja
 				end
 			end
 
 
 			s_read_0: begin
-				app_en    <= 1'b1;  //app enable omgoèi delovanje interfacea SRAM
+				app_en    <= 1'b1;  //app enable omgoÃ¨i delovanje interfacea SRAM
 				app_cmd <= 3'b001;  //izbremeo operacijo pisanja 
 				state <= s_read_1;
 			end
 
 			s_read_1: begin
 				if (app_rdy == 1'b1) begin  //MIG lahko sprejme ukaze
-					cmd_byte_addr_rd <= cmd_byte_addr_rd + ADDRESS_INCREMENT;  //poveèamo naslov
+					cmd_byte_addr_rd <= cmd_byte_addr_rd + ADDRESS_INCREMENT;  //poveÃ¨amo naslov
 					state <= s_read_2;
 				end else begin
-					app_en    <= 1'b1; //app enable omgoèi delovanje interfacea SRAM
+					app_en    <= 1'b1; //app enable omgoÃ¨i delovanje interfacea SRAM
 					app_cmd <= 3'b001; //izbremeo operacijo pisanja
 				end
 			end
 
 			s_read_2: begin
-				if (app_rd_data_valid == 1'b1) begin     //oznaèuje, da je branje veljavno
+				if (app_rd_data_valid == 1'b1) begin     //oznaÃ¨uje, da je branje veljavno
 					ob_data <= app_rd_data;              //prebrani podatek damo v fifo
 					ob_we <= 1'b1;                       //output fifo write enable
 					if (burst_count == 3'd0) begin
 						state <= s_idle;
 					end else begin
-						burst_count <= burst_count - 1'b1; //zmanjšaj št. burstov
+						burst_count <= burst_count - 1'b1; //zmanjÅ¡aj Å¡t. burstov
 					end
 				end
 			end
